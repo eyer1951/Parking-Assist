@@ -1,7 +1,7 @@
 {
 "title": "Parking Assist",
 "version": "1.0",
-"wsURL": "Parkme2.local",
+"wsURL": "Parkme.local",
 "continuous": false,  
 "controls": 
      {
