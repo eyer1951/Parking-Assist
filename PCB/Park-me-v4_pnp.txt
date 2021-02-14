@@ -1,0 +1,81 @@
+*Pick And Place List
+*Company=
+*Author=
+*eMail=
+*
+*Project=Park-me-v4
+*Date=16:59:33
+*CreatedBy=Fritzing 0.9.3b.04.19.5c895d327c44a3114e5fcc9d8260daf0cbb52806
+*
+*
+*Coordinates in mm, always center of component
+*Origin 0/0=Lower left corner of PCB
+*Rotation in degree (0-360, math. pos.)
+*
+*No;Value;Package;X;Y;Rotation;Side;Name
+1;;THT;67.1798;-5.70012;0;Bottom;J36
+2;;;18.9834;-18.8249;0;Bottom;Via16
+3;;THT;74.7873;-5.67458;0;Bottom;J40
+4;;THT;62.0868;-8.17778;0;Bottom;J33
+5;;;83.8959;-3.85987;-90;Bottom;TXT1
+6;;THT;77.8991;-51.6358;0;Bottom;S5
+7;;THT;64.7291;-8.17778;0;Bottom;J31
+8;;;70.7024;-40.9529;0;Bottom;Via18
+9;;;6.59603;-9.53674;0;Bottom;Hole2
+10;;THT;4.60798;-26.4807;0;Bottom;S6
+11;;THT;80.5969;-14.3769;0;Bottom;J20
+12;;THT;22.7727;-7.49345;90;Bottom;LCD
+13;;;12.0132;-7.37317;0;Bottom;TXT1
+14;;THT;74.7876;-8.20329;0;Bottom;J42
+15;;;44.4358;-39.0327;0;Bottom;U1
+16;;THT;14.0458;-52.8017;-180;Bottom;J49
+17;;;25.71;-18.4536;0;Bottom;TXT1
+18;;THT;80.2053;-3.96721;0;Bottom;J46
+19;;THT;78.1972;-29.7579;-90;Bottom;J17
+20;;DIP (Dual Inline) [THT];53.0502;-16.7941;-90;Bottom;74HCT125
+21;;;35.1584;-17.0008;0;Bottom;Via21
+22;;;72.1747;-43.4069;0;Bottom;Via17
+23;;;84.1593;-13.8048;-90;Bottom;TXT1
+24;;THT;69.6949;-8.20329;0;Bottom;J41
+25;;;29.1902;-11.5451;0;Bottom;Via20
+26;;THT;78.1972;-27.1688;-90;Bottom;S3
+27;;;78.0497;-48.3474;0;Bottom;TXT1
+28;;;84.1381;-19.3696;-90;Bottom;TXT1
+29;;THT;75.3772;-51.6358;0;Bottom;J24
+30;;THT;78.1972;-24.6469;-90;Bottom;J16
+31;1µF;200 mil [THT, tantalum];33.4237;-17.9996;-90;Bottom;C10
+32;;;78.2609;-33.7866;-90;Bottom;TXT1
+33;;;12.7407;-2.02696;0;Bottom;TXT4
+34;;THT;17.6701;-7.49345;90;Bottom;J2
+35;;THT;4.60798;-31.5627;0;Bottom;J43
+36;;THT;11.4485;-50.273;-180;Bottom;J48
+37;3.3k;THT;17.3152;-16.4784;0;Bottom;R1
+38;;;27.0784;-11.5325;0;Bottom;Via19
+39;;;6.59603;-46.0529;0;Bottom;Hole4
+40;;THT;14.0455;-50.273;-180;Bottom;J51
+41;;THT;11.4488;-52.8017;-180;Bottom;J47
+42;3.3k;THT;16.7716;-19.2929;0;Bottom;R2
+43;;;1.58389;-27.8678;90;Bottom;TXT1
+44;;THT;69.6946;-5.67458;0;Bottom;J39
+45;;;28.8647;-15.963;-90;Bottom;TXT1
+46;;THT;8.95283;-50.273;-180;Bottom;J52
+47;;THT;62.0871;-5.70012;0;Bottom;J35
+48;;THT;80.4882;-51.6358;0;Bottom;J25
+49;;THT;67.1795;-8.17778;0;Bottom;J34
+50;;THT;64.6388;-5.70012;0;Bottom;J32
+51;;;66.2933;-22.6751;0;Bottom;TXT1
+52;;THT;4.60798;-23.9284;0;Bottom;J45
+53;;THT;8.95311;-52.8017;-180;Bottom;J50
+54;1µF;200 mil [THT, tantalum];66.3498;-18.5718;-90;Bottom;C9
+55;;THT;72.2466;-8.20329;0;Bottom;J38
+56;;;75.3488;-27.2173;-90;Bottom;TXT1
+57;;;84.1575;-9.53674;0;Bottom;Hole6
+58;;;84.1575;-46.0529;0;Bottom;Hole5
+59;;THT;4.60798;-29.0523;0;Bottom;J44
+60;;THT;80.6229;-19.4342;0;Bottom;J19
+61;1µF;100 mil [THT, tantalum];25.7947;-15.9049;-90;Bottom;C7
+62;;THT;72.2598;-5.65923;0;Bottom;J53
+63;;;4.54482;-19.5438;90;Bottom;TXT1
+64;;;33.4516;-21.6385;0;Bottom;TXT1
+65;;;16.8101;-21.9089;0;Bottom;Via24
+66;;;73.1998;-52.1265;-90;Bottom;TXT1

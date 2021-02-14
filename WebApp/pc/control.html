@@ -1,0 +1,1052 @@
+<!DOCTYPE html>
+<html>
+  <!-- control.html -- Generic Project Control  2/9/2021
+    * Operates through home network
+    * Requires control.JSON file containing all controls and parameters 
+        * Place control.html and control.JSON in a separate directory
+    * Assumes MDNS network name of target device is set by JSON
+    * Dark color scheme
+ -->
+ <head>
+    <meta http-equiv="content-type" content="text/html; charset=windows-1252">
+    <title>Project Control</title>
+    <meta name="theme-color" content="#00878f">
+    <meta  name="viewport" content="width=device-width">
+    <meta name="apple-mobile-web-app-capable" content="yes"> 
+    <link rel="stylesheet" type="text/css" href="../control.css">
+    <link rel="stylesheet" type="text/css" href="../colpick.css">
+    <script type="text/javascript" src="../jquery.min.js"></script>
+    <script type="text/javascript" src="../colpick.js"></script>
+    <script type="text/javascript" src="../tinycolor.js"></script>
+    <script type="text/javascript">
+var connection;  // Websocket connection to project
+var open = false;
+var wsURL = "";  //  <project name>.local, set by JSON element
+var statusString = "";
+var flags = 0;
+var myInterval;
+var nextCommand;
+var menuStructure; // will hold all the objects from the json document defining the controls
+var MAX_VALUES = 20;
+var txQueueInterval = 100;  // milliseconds interval between running WS queue
+var txQueue = [];  // queue of commands to send
+var established = false;   // for initial synch
+var PICKER_BASE = 21;  // above the sliders
+var continuous = false;  // default
+var established = false;
+
+function setCookie(cname, cvalue, exdays) {
+	var d = new Date();
+	d.setTime(d.getTime() + (exdays * 24 * 60 * 60 * 1000));
+	var expires = "expires=" + d.toUTCString();
+	document.cookie = cname + "=" + cvalue + ";" + expires + ";path=/";
+}
+
+function getCookie(cname) {
+	var name = cname + "=";
+	var decodedCookie = decodeURIComponent(document.cookie);
+	var ca = decodedCookie.split(';');
+	for (var i = 0; i < ca.length; i++) {
+		var c = ca[i];
+		while (c.charAt(0) == ' ') {
+			c = c.substring(1);
+		}
+		if (c.indexOf(name) == 0) {
+			return c.substring(name.length, c.length);
+		}
+	}
+	return "";
+}
+
+function leadingZero(i) {
+	if (i <= 9) return "0" + i;  
+	return i;
+}
+
+function countOfSliders() {
+	if (menuStructure.controls.sliders != null) {
+		return menuStructure.controls.sliders.length;
+	}
+	else
+		return 0;
+}
+
+function countOfPickers() {
+	if (menuStructure.controls.pickers != null) {
+		return menuStructure.controls.pickers.length;
+	}
+	else
+		return 0;
+}
+
+function countOfCheckboxes() {
+	if (menuStructure.controls.flags) {
+		return menuStructure.controls.flags.length;
+	}
+	else
+		return 0;
+}
+
+function fadeSliderValue(i, v) {
+	var n, m;
+	m =  menuStructure.controls.sliders[i - 1].max;
+	for (n = m; n >=0; n--) {
+		if (fadeCalculation(n) == v) return n; 
+	}
+	return 0;
+}
+
+function enableDisableSliders() {
+	// disable/enable sliders conditionally on checkboxes
+	var d1, d2, e1;
+	for (var i = 1; i <= countOfSliders(); i++) { // each possible range control (slider)
+		d1 = "";
+		d2 = "";
+		e1 = "";
+		if (menuStructure.controls.sliders[i - 1].disabled != undefined) 
+			d1 = menuStructure.controls.sliders[i - 1].disabled;
+		if (menuStructure.controls.sliders[i - 1].disabled2 != undefined) 
+			d2 = menuStructure.controls.sliders[i - 1].disabled2;
+		if (menuStructure.controls.sliders[i - 1].enabled != undefined)
+			e1 = menuStructure.controls.sliders[i - 1].enabled;
+		if ((d1 != "") || (d2 != "")) {
+			document.getElementById("i" + i).disabled = false;  // assume enabled
+			if (d1 != "") {
+				for (var k = 0; k < countOfCheckboxes(); k++) {
+					if ((menuStructure.controls.flags[k] == d1) || (menuStructure.controls.flags[k] == d2))
+						if ($("#chk" + k).prop('checked'))
+							document.getElementById("i" + i).disabled = true;
+				}
+			}
+		}
+		if (e1 != "") {
+			document.getElementById("i" + i).disabled = true;  // assume disabled
+			for (var k = 0; k < countOfCheckboxes(); k++) {
+				if (menuStructure.controls.flags[k] == e1)
+					if ($("#chk" + k).prop('checked'))
+						document.getElementById("i" + i).disabled = false;
+			}
+		}
+	}
+}
+
+function setValuesFromJSON(j) {
+	var obj = JSON.parse(j);
+	var k;
+	var t;
+	// sliders
+	for (i = 1; i <= countOfSliders(); i++) { // set to values received from project
+		if (document.getElementById("i" + i)) {
+			t = typeof menuStructure.controls.sliders[i - 1].p;
+			if (t !== "undefined") {
+				k = fadeSliderValue(i, obj[i]);
+				$("#i" + i).val(k);
+			} else {
+				$("#i" + i).val(obj[i]);
+			}
+		}
+	}
+	// \sliders
+	// pickers
+	for (i = 0; i < countOfPickers(); i++) { // set to values received from project
+		if (document.getElementById("c" + i)) {
+			var dv = obj[i + 21];
+			// convert hsv to hex
+			var dh, ds, dv, v;
+			dh = (dv & 0x1FF0000) >> 16;
+			ds = (dv & 0xFF00) >> 8;
+			dv = (dv & 0xFF);
+			var hsv =  {h:dh, s:ds, b:dv};
+			hv = $.colpick.hsbToHex(hsv)
+			for (x = hv.length; x < 6; x++) { // add leading zeros for #rrggbb in hex.
+				hv = "0" + hv;
+			}
+			$("#c" + i).css("background-color", "#" + hv);
+			$("#c" + i).colpickSetColor("#" + hv);
+		}
+	}
+	// \pickers
+	// flags
+	var n = 1;
+	for (i = 0; i < 32; i++) {
+		if (document.getElementById("chk" + i)) {
+			$("#chk" + i).prop('checked', (obj[0] & n) > 0);
+			n <<= 1;
+		}
+		else
+			break;
+	}
+	// \flags
+	enableDisableSliders();
+    established = true;
+}
+
+function flagsValue() {
+	var f = 0;
+	var n = 1;
+	for (i = 0; i < countOfCheckboxes(); i++) {
+		if ($("#chk" + i).prop('checked')) f += n;
+		n <<= 1;
+	}
+	return f;
+}
+
+function newChk(n) {
+	var checkBoxValue = $("#chk" + n).prop('checked');
+//	console.log("Checked box " + n + ": " + checkBoxValue);
+	// send new flags value in "i" command
+	myWSSend("B:    " + flagsValue()); // send the value now to base for redistribution
+	enableDisableSliders();
+}
+
+function showStatusString(s) {
+	$("#connectStatus").text(s);
+}
+
+function getLabel(n) {
+	var z = "";
+	if (menuStructure.controls.sliders[n - 1].unit != null)
+		z = menuStructure.controls.sliders[n - 1].unit;
+	return z;
+}
+
+function whatPercentage(n) {
+	var min = menuStructure.controls.sliders[n - 1].min;
+	var max = menuStructure.controls.sliders[n - 1].max;
+	var p = $("#i" + n).val();
+	var f = 100 * (p - min) / (max - min);
+	return f.toFixed(1);
+}
+
+function tenths(n) {
+	var f = $("#i" + n).val() / 10.0;
+    $("#value" + n).text(f.toFixed(1) + " " + menuStructure.controls.sliders[n - 1].unit);
+}
+
+function percentTenths(n) {
+    var f = $("#i" + n).val() / 10.0;
+     $("#value" + n).text(f.toFixed(1) +"%");
+}
+
+function percent(n) {
+    var f = $("#i" + n).val();
+     $("#value" + n).text(f +"%");
+}
+
+
+function modulo(a, n) {
+    return ((a % n ) + n ) % n;
+}
+
+function timeOfDay(n) {
+// parameter is number of minutes since midnight (0-1440)
+	var v = $("#i" + n).val();
+    var h = Math.trunc(v / 60);
+    var m = modulo(v, 60);
+    var s = "am";
+    if (v >= 720) {
+        s = "pm";
+    }
+    if (v >=780) {
+        h -= 12;
+    }
+    $("#value" + n).text(h + ":" + m.toString().padStart(2, '0') + s);
+}
+
+function msec(n) {  // displays milliseconds or fractional seconds
+	var v = $("#i" + n).val();
+    var m = v / 1000.0;
+    if (v < 1000)
+        $("#value" + n).text(v + " msec.");
+     else
+        if (v < 2000)
+            $("#value" + n).text(m.toFixed(2) + " sec.");
+        else 
+            $("#value" + n).text(m.toFixed(1) + " sec.");
+}
+
+function splatWidthParam(n, max) {
+	var v = $("#i" + n).val();
+	return i = Math.round(Math.pow(max, 1/max)**v);
+}
+
+function splatWidthValue(n, max) {
+	$("#value" + n).text(splatWidthParam(n, max) + " pixels");
+}
+
+function percentValue(n) {
+	$("#value" + n).text(whatPercentage(n) + "%");
+}
+
+function fadeValue(n) {
+	var v = fadeParam(n)
+	var f = 100 * (v - 183) / (254 - 183);
+	$("#value" + n).text(f.toFixed(1) + "%");
+}
+
+function multiplierValue(n) {
+	var f = $("#i" + n).val() / 10000;
+	$("#value" + n).text(whatPercentage(n) + "%  (" + f.toFixed(3) + ")");
+}
+
+function coverageValue(n) {
+	var v = $("#i" + n).val();
+	var p = v * 100/52;
+	$("#value" + n).text(p.toFixed(1) + "% (" + v + " rows)");
+}
+
+function lowValue(n) {
+	var f = 0.001 * Math.pow(1.07152, $("#i" + n).val());
+	$("#value" + n).text(whatPercentage(n) + "%  (" + f.toFixed(3) + ")");
+}
+
+function ASCII(n) {
+	var v = $("#i" + n).val();
+	$("#value" + n).text("'" + String.fromCharCode(v) + "'");
+}
+
+
+function reEnable() {
+	$("#conn_b").prop("disabled", false);
+}
+
+function reDisable() {
+	$("#conn_b").prop("disabled", true).css("background-color", "#999");
+}
+
+function show_con_status() {
+    var status = "";
+    var chkmark = '\u2714'
+    if (open) status = chkmark;
+    showStatusString(status);
+}
+
+function hideControls() {
+	$("#otherControls").hide();
+	showStatusString("");
+	for (j = 1; j <= 20; j++) {  // assumes we will never have more than 20 slider rows
+		if (document.getElementById("row" + j)) {
+			$("#row" + j).hide();
+		} else break;
+	}
+	for (j = 0; j < 10; j++) { // assumes we will never have more than 10 picker rows
+		if (document.getElementById("color" + j)) {
+			$("#color" + j).hide();
+		} else break;
+	}
+	for (j = 0; j < 5; j++) { // assumes we will never have more than 5 checkbox rows
+		if (document.getElementById("box" + j)) {
+			$("#box" + j).hide();
+		} else break;
+	}
+}
+
+
+function closeWsConnection() {
+	open = false;
+    show_con_status();
+}
+
+function WSQueueManager() {  // set to run every txQueueInterval ms
+	if (!open) return;
+	if (txQueue.length > 0) {
+		connection.send(txQueue[0]);
+		txQueue.shift();  // remove the element we just sent (the first)
+	}
+}
+
+function myWSSend(s) {
+	txQueue.push(s);
+	console.log("Send: " + s);
+}
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function connectWebsocket() {
+    connection = new WebSocket(wsURL,['arduino']);
+    connection.onopen = function () {
+        sleep(20)
+            .then(() => { 
+            open = true; 
+            console.log('Websocket Opened');
+            show_con_status();
+            myWSSend("Q");   // query parameter set
+        });  // testing this
+        console.log('WebSocket connection will open soon');
+    }
+
+    connection.onerror = function (error) {
+        console.log('WebSocket error: ' + error);
+        closeWsConnection();
+   }
+
+	connection.onmessage = function (e) {
+		console.log('Received: ', e.data);
+		var v = e.data.substring(4);  // skip the ":" separator
+		if (e.data[0] == 'Q') {  // response to Query parameter values
+			if (e.data.includes("NULL")) {
+				// project has never saved a parameter set
+				// check for cookie
+				var c = getCookie("park");
+				if (c == "") {  // no cookie stored here
+					console.log("No cookie, and we have no NVS for 'park'");
+					c = "[";  // make JSON for "f" command
+					// sliders
+					for (i = 0; i < countOfSliders(); i++) { // set to defaults
+						v = menuStructure.controls.sliders[i - 1].value;
+						if (v == undefined) v = 0;
+						$("#i" + i).val(v);
+						c += v + ",";
+					}
+					for (i = countOfSliders(); i <= 20; i++) {
+						c += "0,";
+					}
+					// \sliders
+					// colors
+					for (i = 0; i < countOfPickers(); i++) { // set to defaults
+						var v = menuStructure.controls.pickers[i].value;
+						if (v == undefined) v = "FFFF00";
+
+						 $("#c" + i).colpick({
+							 onSubmit: function (hsb, hex, rgb, el, bySetColor) {
+								 $(el).css("background-color", "#" + hex);
+								 $(el).colpickHide();
+								 newColorValue(el, hex, hsb);
+							 },
+							 onChange: function (hsb, hex, rgb, el, bySetColor) {
+								 $(el).css("background-color", "#" + hex);
+								 newColorInput(el, hex, hsb);
+							 }
+						 });
+
+						$("#c" + i).css("background-color", "#" + v);
+						$("#c" + i).colpickSetColor("#" + v);
+//						console.log("2. set color (hex): " + v);
+//						var dv = parseInt(v, 16);
+// convert hex to hsv, to decimal
+						var hsv = $.colpick.hexToHsb(v);
+						var dv = (hsv.h << 16) + (hsv.s << 8) + Math.round(hsv.b);
+						//console.log("Color for 'f' command for picker " + i + ": " + dv + " (decimal)");
+						c += dv + ",";
+					}
+					for (i = countOfPickers(); i < 20; i++) {
+						c += "0,";
+					}
+					// \colors
+					// checkboxes
+					c += flagsValue() + "]";
+					// \checkboxes
+					// send "f" command to project to set these values for initial use
+					console.log("Setting parameters to nominal values based on control.json");
+				}
+				else { // cookie will have values we should use
+					setValuesFromJSON(c);
+					console.log("Setting parameters from cookie");
+				}
+			}
+			else {
+				// values provided in JSON
+				var j = e.data.substring(1);
+                showFullMenu();
+				setValuesFromJSON(j);
+				console.log("Setting parameters from JSON provided by project");
+			}
+			updateValueDisplays();
+		}
+	}
+
+	connection.onclose = function () {
+        console.log('WebSocket connection closed');
+        established = false;
+        closeWsConnection();
+        connection = null;
+        setTimeout(connectWebsocket(), 5000);
+	}
+} 
+
+function setOfValues() {
+	var vals = [];  // maximum number of controls for this pro/sub
+	// sliders
+	var numberOfSliders = countOfSliders();  // including all types
+	for (i = 0; i < numberOfSliders; i++) { // each possible slider\
+		var vs = $("#i" + i).val();
+		if (vs == undefined) {
+			v = 0;
+		}
+		else {
+			v = parseInt(vs);
+		}
+		vals.push(v);
+	}
+	for (i = numberOfSliders; i < 20; i++) { // assumes maximum of 20 sliders; adjust accordingly
+		vals.push(0);
+	}
+	// \sliders
+	// pickers
+	for (i = 0; i < countOfPickers(); i++) { // each possible picker
+		var vhh = $("#c" + i).css("background-color");
+		var tc = tinycolor(vhh)
+		var vh = tc.toHex();
+//		console.log("Picker " + i + " value (hex): " + vh);
+		var vd = 0;
+		if (vhh != null)
+			vd = parseInt(vh, 16);
+//		console.log("Picker " + i + " value (decimal): " + vd);
+		vals.push(vd);
+	}
+	for (i = countOfPickers(); i < 20; i++) { // assumes maximum of 20 pickers; adjust accordingly
+		vals.push(0);
+	}
+	// \pickers
+	// checkboxes -- push value of accumulated checkboxes
+	vals.push(flagsValue());  // push value of the flags
+	// \checkboxes
+
+	var json = JSON.stringify(vals);
+//	console.log("Saving in cookie: " + json);
+	return json;
+}
+
+function clickSave() {
+	setCookie(proSubStr("v"), setOfValues(), 365);
+}
+
+function clickErase() {
+	if (open)
+		if (confirm("Really erase NVS?"))
+			myWSSend("eraseNVS");
+}
+
+function handleNew(cmd) {
+	var i = document.getElementById(cmd).value;
+	var tstr = cmd + ":" + i;
+	myWSSend(tstr);
+	return i;
+}
+
+function setShading() {
+}
+
+function showProgramTitle() {
+	s = pro + ": " + menuStructure.controls.description;
+	$("#proValue").text(s);
+}
+
+function showFullMenu() {   
+	let i, s, lj, myJSON;
+	let dis = false, numberOfSliders = 0;
+	$("#otherControls").show();
+	if (menuStructure.controls.sliders == undefined) {
+		// hide all slider rows
+		for (j = 1; j <= 20; j++) {  // assumes we will never have more than 20 slider rows
+			if (document.getElementById("row" + j)) {
+				$("#row" + j).hide();
+				$("#value" + j).text("");  // erase value for now
+			} else
+				break;
+		}
+	}
+	else {
+		numberOfSliders = countOfSliders(); // counts only sliders
+		for (i = 1; i <= numberOfSliders; i++) { // each possible range control (slider)
+			$("#row" + i).show();
+			$("#label" + i).text(menuStructure.controls.sliders[i - 1].label);
+			$("#value" + i).text("");  // erase value for now
+			$("#i" + i).attr("max", menuStructure.controls.sliders[i - 1].max)
+				.attr("min", menuStructure.controls.sliders[i - 1].min)
+				.attr("step", menuStructure.controls.sliders[i - 1].step);
+			if (menuStructure.controls.sliders[i - 1].css != null) {
+				$("#row" + i).css(menuStructure.controls.sliders[i - 1].css);  
+			}
+			else {
+				$("#row" + i).css("border-top","medium none");
+				$("#row" + i).css("border-bottom","medium none");
+			}
+		}
+		// hide other slider rows
+		for (j = numberOfSliders + 1; j <= 20; j++) {  // assumes we will never have more than 20 slider rows
+			if (document.getElementById("row" + j)) {
+				$("#row" + j).hide();
+				$("#value" + j).text("");  // erase value for now
+			} else
+				break;
+		}
+	} // \sliders
+
+	// show color pickers and row(s)
+	if ((countOfPickers()) == 0) {
+		// hide all picker row(s)
+		for (j = 0; j < 5; j++) {  // assumes we will never have more than 5 picker rows
+			if (document.getElementById("color" + j)) {
+				$("#color" + j).hide();
+			} else
+				break;
+		}
+	}
+	else {
+		var numberOfPickerRows = 1 + Math.floor((countOfPickers() - 1) / 6);  // six pickers per row
+//		console.log("Displaying " + countOfPickers() + " color pickers on " + numberOfPickerRows + " row(s)");
+		// show/hide the picker row(s)
+		for (i = 0; i < 6; i++) {  // assumes we will never have more than 5 picker rows
+			i <= (numberOfPickerRows - 1) ? $("#color" + i).show() : $("#color" + i).hide();
+		}
+		// show pickers
+		for (i = 0; i < countOfPickers(); i++) { // each possible picker
+			$("#d" + i).show();
+			var cv = menuStructure.controls.pickers[i].value;
+			$("#labelc" + i).css("visibility", "visible");
+			$("#labelc" + i).text(menuStructure.controls.pickers[i].label);
+
+			$("#c" + i).colpick({
+				onSubmit: function (hsb, hex, rgb, el, bySetColor) {
+					$(el).css("background-color", "#" + hex);
+					$(el).colpickHide();
+					newColorValue(el, $.colpick.hexToHsb(hex));
+				},
+				onChange: function (hsb, hex, rgb, el, bySetColor) {
+					$(el).css("background-color", "#" + hex);
+					newColorInput(el, $.colpick.hexToHsb(hex));
+				}
+			});
+
+			$("#c" + i).colpickSetColor("#" + cv);
+			$("#c" + i).css("background-color", "#" + cv);
+			if (menuStructure.controls.pickers[i].hsl) {
+console.log("Picker " + i + " is HSL");
+			}
+		}
+		// hide other pickers
+		for (j = countOfPickers(); j < 18; j++) {  // actual number of pickers in HTML
+			$("#labelc" + j).text("");
+			$("#labelc" + j).css("visibility", "hidden");
+			$("#d" + j).hide();
+		}
+	} // \color pickers
+
+	// show checkboxes and row(s)
+	var numberOfCheckboxes = 0;
+	if (menuStructure.controls.flags == undefined) {
+		// hide all checkbox row(s)
+		for (j = 0; j < 5; j++) { // assumes we will never have more than 5 checkbox rows
+			if (document.getElementById("box" + j)) {
+				$("#box" + j).hide();
+			} else
+				break;
+		}
+	}
+	else {
+		numberOfCheckboxes = menuStructure.controls.flags.length;
+		var numberOfCheckboxRows = 1 + Math.floor((numberOfCheckboxes - 1) / 6); // six checkboxes per row
+//		console.log("Displaying " + numberOfCheckboxes + " checkBoxes on " + numberOfCheckboxRows + " row(s)");
+		// show the checkbox row(s)
+		for (i = 0; i < numberOfCheckboxRows; i++) {
+			$("#box" + i).show();
+		}
+		// show checkboxes
+		for (i = 0; i < numberOfCheckboxes; i++) { // each possible checkbox
+			$("#chk" + i).show();
+			$("#ckLabel" + i).show();
+			$("#ckLabel" + i).text(menuStructure.controls.flags[i]);
+		}
+		// hide other checkboxes
+		for (j = numberOfCheckboxes; j < 18; j++) {  // we have 18 checkboxes in HTML
+			$("#chk" + j).hide();
+			$("#ckLabel" + j).hide();
+		}
+		// hide other checkbox row(s)
+		for (j = numberOfCheckboxRows; j < 3; j++) { // we have 3 checkbox rows in HTML
+			$("#box" + j).hide();
+		}
+	} // \checkBoxes
+	enableDisableSliders();
+} // showFullMenu
+
+function updateValueDisplay(n) {
+	var s2 = "";
+	if (menuStructure.controls.sliders[n - 1].ff != null) {
+		var s1 = menuStructure.controls.sliders[n - 1].ff;
+		if (s1 == "splatWidthValue") 
+			s2 = ", " + menuStructure.controls.sliders[n - 1].max;
+		eval(s1 + "(" + n + s2 + ")");
+		return;
+	}
+	$("#value" + n).text($("#i" + n).val() + " " + getLabel(n));
+}
+
+function updateValueDisplays() {
+	if (countOfSliders() > 0) {
+		for (n = 1; n <= menuStructure.controls.sliders.length; n++) {
+			updateValueDisplay(n);
+		}
+	}
+}
+
+function fadeCalculation(iv) {
+	return Math.round(255 * Math.sin((Math.PI/180)* 90 *(65 + 2 * iv)/127)) - 1;
+}
+
+function fadeParam(n) {
+// Excel:	255*SIN(RADIANS(90*(65+2*A4)/127))-1
+	var iv = $("#i" + n).val();  // 0-31
+	var v = fadeCalculation(iv);
+	return v;
+}
+
+function setNewSlider(n, cmd) {
+    if (cmd == "I" && !established) return;
+	if (menuStructure.controls.sliders[n - 1].p != null) {
+			v = eval(menuStructure.controls.sliders[n - 1].p + "(" + n + ")");
+			console.log ("input= " +  $("#i" + n).val() + "  output= " + v);
+		}
+	else
+		v = $("#i" + n).val();
+    myWSSend(cmd + leadingZero(n) + ":" + v);  // i0 is flags; sliders count from 1
+}
+
+function newValue(n) {
+    var override = menuStructure.controls.sliders[n - 1].continuous;
+	if (!override || ((override == null) && !continuous)) 
+        setNewSlider(n, "P");
+	updateValueDisplay(n); 
+}
+
+function newInput(n) {
+    var doit = true;
+    var queued_msg_cnt = 0;
+    var override = menuStructure.controls.sliders[n - 1].continuous;
+    if (override == null)
+        {
+            if (!continuous)
+                doit = false;
+        }
+    else
+        if (!override) 
+            doit = false;
+	if ($("#i" + n).val() == undefined) doit = false;
+    if (doit) {
+        if (open) queued_msg_cnt += txQueue.length;
+            if (queued_msg_cnt == 0) {
+                setNewSlider(n, "I");
+            }
+    }
+    updateValueDisplay(n); 
+}
+
+function hsvToInt(hsvv) {
+	console.log("HSV value:  h:" + hsvv.h + " s:" + hsvv.s + "  b:" + hsvv.b);
+	var dh, ds, db;
+	dh = Math.round(hsvv.h);
+	ds = Math.round(hsvv.s);
+	db = Math.round(hsvv.b);
+	return (dh << 16) + (ds << 8) + db;
+}
+
+function setNewPicker(i, d, cmd) {
+    if (cmd == "I" && !established) return;
+	var j = i + PICKER_BASE;
+    myWSSend(cmd + j + ":" + d);  // send the value now 
+}
+
+function newColorValue(e, hsvv) {
+	var iStr = $(e).attr("id").substr(1);
+	var i = parseInt(iStr);
+	if (i >= countOfPickers()) return;
+//	console.log("New color value - decimal-hex for picker #" + i + " : " + dv + "-" + hv);
+//	if (menuStructure.controls.pickers[i].notContinuous == undefined) return;
+	setNewPicker(i, hsvToInt(hsvv), "P");
+}
+
+function newColorInput(e, hsvv) {  // Used for immediate input
+	var iStr = $(e).attr("id").substr(1);
+    var queued_msg_cnt = 0;
+	var i = parseInt(iStr);
+	if (i >= countOfPickers()) return;
+	// try { var b = menuStructure.controls.pickers[i].continuous;}
+	// catch(err){ alert("i= " + i + "  pro= " + pro)}
+    var override = menuStructure.controls.pickers[i].continuous;
+    if (override == null)
+        {
+            if (!continuous)
+                return;
+        }
+    else
+        if (!override) 
+            return;
+//		console.log("Continuous new color input - decimal-hex for picker #" + i + " : " + dv + "-" + hv);
+        queued_msg_cnt += txQueue.length;
+        if (queued_msg_cnt == 0) {
+			setNewPicker(i, hsvToInt(hsvv),"I");
+        }
+}
+
+function highlightRB(i) {
+	$("#rb" + i).css("background", "#18a3bf");
+}
+
+function lowlightRB(i) {
+	$("#rb" + i).css("background", "#CCC");
+}
+
+function getGoing() {
+	setShading();
+    var loc = window.location.pathname;
+    var dir = loc.substring(0, loc.lastIndexOf('/'));
+    $.ajax({
+		url: 'projectName.json',
+		dataType: "json",
+		success: function (project) {
+			$.ajax({
+				url: project.projectName,
+				dataType: "json",
+				success: function (data) {
+					menuStructure = data;
+					setInterval("WSQueueManager()", txQueueInterval);
+		            $("#projectTitle").html(menuStructure.title + '&nbsp;<span style="font-size:8pt">(v' + menuStructure.version + ')</span>');
+		            continuous = menuStructure.continuous;
+		            wsURL = "ws://" + menuStructure.wsURL + ":81";
+		            connectWebsocket();
+				}
+			});
+		}
+	});
+
+document.ontouchmove = function(e){ e.preventDefault(); }
+}
+
+ </script>
+ </head>
+ <body onload="getGoing()">
+        <table class="tabledressing">
+          <tbody>
+          <tr colspan="2"><td colspan="3" class="titleClass" ><div id="projectTitle">&nbsp;</div></td></tr>
+            <tr style="line-height:30px">
+              <td>
+              <div class="connStatus newText" id="connectStatus"></div>
+              </td>
+              <td>&nbsp;</td>
+              <td>
+				<div style="text-align:right" id="otherControls">
+	            <!--<input id="save_b" style="margin-left:90px" class="button2" onclick="clickSave()" value="SAVE" type="button">-->
+	            <input id="erase_b" style="margin-left:10px" class="button2" onclick="clickErase()" value="ERASE" type="button">
+	            </div>
+            </td>             
+            </tr>
+          </tbody>
+        </table>
+        <table class="tabledressing">
+          <tbody>
+            <tr class="controlRow sliderRow" id="row1">
+              <td class="rowLabel" id="label1"></td>
+              <td> <input class="range" min="0" max="100" value="90" step="1" onchange="newValue(1)" oninput="newInput(1)" id="i1" type="range"> </td>
+              <td class="valueLabel">
+                <div id="value1"> </div>
+              </td>
+            <tr class="controlRow sliderRow" id="row2">
+              <td class="rowLabel" id="label2"></td>
+              <td> <input class="range" min="0" max="100" value="90" step="1" onchange="newValue(2)" oninput="newInput(2)" id="i2" type="range"> </td>
+              <td class="valueLabel">
+                <div id="value2"> </div>
+              </td>
+            </tr>
+            <tr class="controlRow sliderRow" id="row3">
+              <td class="rowLabel" id="label3"></td>
+              <td> <input class="range" min="0" max="100" value="90" step="1" onchange="newValue(3)" oninput="newInput(3)" id="i3" type="range"> </td>
+              <td class="valueLabel">
+                <div id="value3"> </div>
+              </td>
+            </tr>
+            <tr class="controlRow sliderRow" id="row4">
+              <td class="rowLabel" id="label4"></td>
+              <td> <input class="range" min="0" max="100" value="90" step="1" onchange="newValue(4)" oninput="newInput(4)" id="i4" type="range"> </td>
+              <td class="valueLabel">
+                <div id="value4"> </div>
+              </td>
+            </tr>
+            <tr class="controlRow sliderRow" id="row5">
+              <td class="rowLabel" id="label5"></td>
+              <td> <input class="range" min="0" max="100" value="90" step="1" onchange="newValue(5)" oninput="newInput(5)" id="i5" type="range"> </td>
+              <td class="valueLabel">
+                <div id="value5"> </div>
+              </td>
+            </tr>
+            <tr class="controlRow sliderRow" id="row6">
+              <td class="rowLabel" id="label6"></td>
+              <td> <input class="range" min="0" max="100" value="90" step="1" onchange="newValue(6)" oninput="newInput(6)" id="i6" type="range"> </td>
+              <td class="valueLabel">
+                <div id="value6"> </div>
+              </td>
+            </tr>
+            <tr class="controlRow sliderRow" id="row7">
+              <td class="rowLabel" id="label7"></td>
+              <td> <input class="range" min="0" max="100" value="90" step="1" onchange="newValue(7)" oninput="newInput(7)" id="i7" type="range"> </td>
+              <td class="valueLabel">
+                <div id="value7"> </div>
+              </td>
+            </tr>
+            <tr class="controlRow sliderRow" id="row8">
+				<td class="rowLabel" id="label8"></td>
+				<td> <input class="range" min="0" max="100" value="90" step="1" onchange="newValue(8)" oninput="newInput(8)" id="i8" type="range"> </td>
+				<td class="valueLabel">
+				  <div id="value8"> </div>
+				</td>
+			  </tr>
+			  <tr class="controlRow sliderRow" id="row9">
+				<td class="rowLabel" id="label9"></td>
+				<td> <input class="range" min="0" max="100" value="90" step="1" onchange="newValue(9)" oninput="newInput(9)" id="i9" type="range"> </td>
+				<td class="valueLabel">
+				  <div id="value9"> </div>
+				</td>
+			  </tr>
+			  <tr class="controlRow sliderRow" id="row10">
+				<td class="rowLabel" id="label10"></td>
+				<td> <input class="range" min="0" max="100" value="90" step="1" onchange="newValue(10)" oninput="newInput(10)" id="i10" type="range"> </td>
+				<td class="valueLabel">
+				  <div id="value10"> </div>
+				</td>
+			  </tr>
+			  <tr class="controlRow sliderRow" id="row11">
+				<td class="rowLabel" id="label11"></td>
+				<td> <input class="range" min="0" max="100" value="90" step="1" onchange="newValue(11)" oninput="newInput(11)" id="i11" type="range"> </td>
+				<td class="valueLabel">
+				  <div id="value11"> </div>
+				</td>
+			  </tr>
+			  <tr class="controlRow sliderRow" id="row12">
+				<td class="rowLabel" id="label12"></td>
+				<td> <input class="range" min="0" max="100" value="90" step="1" onchange="newValue(12)" oninput="newInput(12)" id="i12" type="range"> </td>
+				<td class="valueLabel">
+				  <div id="value12"> </div>
+				</td>
+			  </tr>
+			  <tr class="controlRow sliderRow" id="row13">
+				<td class="rowLabel" id="label13"></td>
+				<td> <input class="range" min="0" max="100" value="90" step="1" onchange="newValue(13)" oninput="newInput(13)" id="i13" type="range"> </td>
+				<td class="valueLabel">
+				  <div id="value13"> </div>
+				</td>
+			  </tr>
+			  <tr class="controlRow sliderRow" id="row14">
+				<td class="rowLabel" id="label14"></td>
+				<td> <input class="range" min="0" max="100" value="90" step="1" onchange="newValue(14)" oninput="newInput(14)" id="i14" type="range"> </td>
+				<td class="valueLabel">
+				  <div id="value14"> </div>
+				</td>
+            </tr>
+            <tr class="controlRow sliderRow" id="row15">
+                <td class="rowLabel" id="label15"></td>
+                <td> <input class="range" min="0" max="100" value="90" step="1" onchange="newValue(15)" oninput="newInput(15)" id="i15" type="range"> </td>
+                <td class="valueLabel">
+                   <div id="value15"> </div>
+                </td>
+            </tr>
+            <tr class="controlRow sliderRow" id="row16">
+                <td class="rowLabel" id="label16"></td>
+                <td> <input class="range" min="0" max="100" value="90" step="1" onchange="newValue(16)" oninput="newInput(16)" id="i16" type="range"> </td>
+                <td class="valueLabel">
+                   <div id="value16"> </div>
+                </td>
+            </tr>
+            <tr class="controlRow sliderRow" id="row17">
+                <td class="rowLabel" id="label17"></td>
+                <td> <input class="range" min="0" max="100" value="90" step="1" onchange="newValue(17)" oninput="newInput(17)" id="i17" type="range"> </td>
+                <td class="valueLabel">
+                   <div id="value17"> </div>
+                </td>
+            </tr>
+            <tr class="controlRow sliderRow" id="row18">
+                <td class="rowLabel" id="label18"></td>
+                <td> <input class="range" min="0" max="100" value="90" step="1" onchange="newValue(18)" oninput="newInput(18)" id="i18" type="range"> </td>
+                <td class="valueLabel">
+                   <div id="value18"> </div>
+                </td>
+            </tr>
+            <tr class="controlRow sliderRow" id="row19">
+                <td class="rowLabel" id="label19"></td>
+                <td> <input class="range" min="0" max="100" value="90" step="1" onchange="newValue(19)" oninput="newInput(19)" id="i19" type="range"> </td>
+                <td class="valueLabel">
+                   <div id="value19"> </div>
+                </td>
+            <tr class="controlRow sliderRow" id="row20">
+                <td class="rowLabel" id="label20"></td>
+                <td> <input class="range" min="0" max="100" value="90" step="1" onchange="newValue(20)" oninput="newInput(20)" id="i20" type="range"> </td>
+                <td class="valueLabel">
+                   <div id="value20"> </div>
+                </td>
+            </tr>
+					<!-- Color Pickers -->
+            <tr class="controlRow colorRow" id="color0">
+              <td class="rowLabel" id="colorLabel0">Colors:</td>
+              <td colspan="2">
+              <div class="colorLabel" id="labelc0"></div><div class="cContainer" id="d0"><input id="c0" class="picker"></div>
+              <div class="colorLabel" id="labelc1"></div><div class="cContainer" id="d1"><input id="c1" class="picker"></div>
+              <div class="colorLabel" id="labelc2"></div><div class="cContainer" id="d2"><input id="c2" class="picker"></div>
+              <div class="colorLabel" id="labelc3"></div><div class="cContainer" id="d3"><input id="c3" class="picker"></div>
+              <div class="colorLabel" id="labelc4"></div><div class="cContainer" id="d4"><input id="c4" class="picker"></div>
+              <div class="colorLabel" id="labelc5"></div><div class="cContainer" id="d5"><input id="c5" class="picker"></div>
+             </td>
+            </tr>
+            <tr class="controlRow colorRow" id="color1">
+              <td class="rowLabel" id="colorLabel1">Colors:</td>
+              <td colspan="2">
+              <div class="colorLabel" id="labelc6"></div><div class="cContainer" id="d6"><input id="c6" class="picker"></div>
+              <div class="colorLabel" id="labelc7"></div><div class="cContainer" id="d7"><input id="c7" class="picker"></div>
+              <div class="colorLabel" id="labelc8"></div><div class="cContainer" id="d8"><input id="c8" class="picker"></div>
+              <div class="colorLabel" id="labelc9"></div><div class="cContainer" id="d9"><input id="c9" class="picker"></div>
+              <div class="colorLabel" id="labelc10"></div><div class="cContainer" id="d10"><input id="c10" class="picker"></div>
+              <div class="colorLabel" id="labelc11"></div><div class="cContainer" id="d11"><input id="c11" class="picker"></div>
+             </td>
+            </tr>
+            <tr class="controlRow colorRow" id="color2">
+              <td class="rowLabel" id="colorLabel2">Colors:</td>
+              <td colspan="2">
+              <div class="colorLabel" id="labelc12"></div><div class="cContainer" id="d12"><input id="c12" class="picker"></div>
+              <div class="colorLabel" id="labelc13"></div><div class="cContainer" id="d13"><input id="c13" class="picker"></div>
+              <div class="colorLabel" id="labelc14"></div><div class="cContainer" id="d14"><input id="c14" class="picker"></div>
+              <div class="colorLabel" id="labelc15"></div><div class="cContainer" id="d15"><input id="c15" class="picker"></div>
+              <div class="colorLabel" id="labelc16"></div><div class="cContainer" id="d16"><input id="c16" class="picker"></div>
+              <div class="colorLabel" id="labelc17"></div><div class="cContainer" id="d17"><input id="c17" class="picker"></div>
+             </td>
+            </tr>
+            <!-- Checkboxes -->
+            <tr class="controlRow" id="box0">
+              <td class="rowLabel">Options:<br>
+              </td>
+              <td colspan="2" >
+              <div class="ckLabel" id="ckLabel0">:</div><input onchange="newChk(0)" id="chk0" type="checkbox"> 
+              <div class="ckLabel" id="ckLabel1">:</div><input onchange="newChk(1)" id="chk1" type="checkbox">
+              <div class="ckLabel" id="ckLabel2">:</div><input onchange="newChk(2)" id="chk2" type="checkbox">
+              <div class="ckLabel" id="ckLabel3">:</div><input onchange="newChk(3)" id="chk3" type="checkbox">
+              <div class="ckLabel" id="ckLabel4">:</div><input onchange="newChk(4)" id="chk4" type="checkbox"> 
+              <div class="ckLabel" id="ckLabel5">:</div><input onchange="newChk(5)" id="chk5" type="checkbox">
+              </td>
+            </tr>
+            <tr class="controlRow" id="box1">
+              <td class="rowLabel">Options:<br>
+              </td>
+              <td colspan="2">
+              <div class="ckLabel" id="ckLabel6">:</div><input onchange="newChk(6)" id="chk6" type="checkbox">
+              <div class="ckLabel" id="ckLabel7">:</div><input onchange="newChk(7)" id="chk7" type="checkbox">   
+              <div class="ckLabel" id="ckLabel8">:</div><input onchange="newChk(8)" id="chk8" type="checkbox">
+              <div class="ckLabel" id="ckLabel9">:</div><input onchange="newChk(9)" id="chk9" type="checkbox">   
+              <div class="ckLabel" id="ckLabel10">:</div><input onchange="newChk(10)" id="chk10" type="checkbox">
+              <div class="ckLabel" id="ckLabel11">:</div><input onchange="newChk(11)" id="chk11" type="checkbox">
+              </td>
+            </tr>
+            <tr class="controlRow" id="box2">
+              <td class="rowLabel">Options:<br>
+              </td>
+              <td colspan="2">
+              <div class="ckLabel" id="ckLabel12">:</div><input onchange="newChk(12)" id="chk12" type="checkbox">   
+              <div class="ckLabel" id="ckLabel13">:</div><input onchange="newChk(13)" id="chk13" type="checkbox">
+              <div class="ckLabel" id="ckLabel14">:</div><input onchange="newChk(14)" id="chk14" type="checkbox">   
+              <div class="ckLabel" id="ckLabel15">:</div><input onchange="newChk(15)" id="chk15" type="checkbox">   
+              <div class="ckLabel" id="ckLabel16">:</div><input onchange="newChk(16)" id="chk16" type="checkbox">
+              <div class="ckLabel" id="ckLabel17">:</div><input onchange="newChk(17)" id="chk17" type="checkbox">   
+              </td>
+            </tr>
+          </tbody>
+        </table>
+  </body>
+</html>

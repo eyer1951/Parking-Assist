@@ -1,0 +1,128 @@
+{
+"title": "Parking Assist",
+"version": "1.0",
+"wsURL": "Parkme2.local",
+"continuous": false,  
+"controls": 
+     {
+    "sliders": [
+        {
+            "label": "Target Distance",
+            "min": 200,
+            "max": 600,
+            "step": 1,
+            "value": 450,
+            "ff": "tenths",
+            "unit": "in."
+        },
+        {
+            "label": "Approach Zone Depth",
+            "min": 120,
+            "max": 600,
+            "step": 1,
+            "value": 550,
+            "ff": "tenths",
+            "unit": "in."
+        },
+        {
+            "label": "Landing Zone Depth",
+            "min": 20,
+            "max": 120,
+            "step": 1,
+            "value": 50,
+            "ff": "tenths",
+            "unit": "in."
+        },
+        {
+            "label": "Garage Door Clearance",
+            "min": 40,
+            "max": 450,
+            "step": 1,
+            "value": 50,
+            "ff": "tenths",
+            "unit": "in."
+        },
+        {
+            "label": "Timeout After Stable",
+            "min": 3000,
+            "max": 25000,
+            "step": 1,
+            "value": 10000,                
+            "ff": "msec"        },
+        {
+            "label": "Sample Period (Fast)",
+            "min": 25,
+            "max": 500,
+            "step": 1,
+            "value": 100,
+            "ff": "msec"
+        },
+        {
+            "label": "Sample Period (Slow)",
+            "min": 400,
+            "max": 1000,
+            "step": 10,
+            "value": 700,
+            "ff": "msec"
+        },
+        {
+            "label": "Turn On Time",
+            "min": 0,
+            "max": 720,
+            "step": 1,
+            "value": 360,
+            "ff": "timeOfDay"
+         },
+        {
+            "label": "Turn Off Time",
+            "min": 720,
+            "max": 1440,
+            "step": 1,
+            "value": 1380,
+            "ff": "timeOfDay"
+        },
+        {
+            "label": "Hysteresis",
+            "min": 2,
+            "max": 20,
+            "step": 1,
+            "value": 10,
+            "ff": "tenths",
+            "unit": "in."
+        },
+        {
+            "label": "LCD Display Int.",
+            "min": 100,
+            "max": 2000,
+            "step": 1,
+            "value": 300,
+            "ff": "msec"
+
+        },
+        {
+            "label": "Glitch Limit",
+            "min": 10,
+            "max": 40,
+            "step": 1,
+            "value": 20,
+            "ff": "percentTenths"
+        },
+        {
+            "label": "Brightness",
+            "min": 25,
+            "max": 100,
+            "step": 1,
+            "value": 50,
+            "ff": "percent"
+         },
+        {
+            "label": "Vacancy Delay",
+            "min": 10,
+            "max": 300,
+            "step": 1,
+            "value": 60,
+            "unit": "sec."
+         }
+    ]
+ } 
+}

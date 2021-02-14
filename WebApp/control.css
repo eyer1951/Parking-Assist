@@ -1,0 +1,342 @@
+﻿input[type="range"]:disabled {
+    background: #e6e6e6;
+}
+body { 
+    max-width: 100% !​important; 
+    overflow-x: hidden !important;
+    background-color: black;
+}
+input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    border: 1px solid white;
+    height: 26px;
+    width: 19px;
+    border-radius: 3px;
+    background: Navy;
+    cursor: pointer;
+     margin-top: -10px; /* You need to specify a margin in Chrome, but in Firefox and IE it is automatic */
+    box-shadow: 1px 1px 1px #000000, 0px 0px 1px #0d0d0d; /* Add cool effects to your sliders! */
+}
+
+/* All the same stuff for Firefox */
+input[type=range]::-moz-range-thumb {
+    box-shadow: 1px 1px 1px #000000, 0px 0px 1px #0d0d0d;
+    border: 1px solid #white;
+    height: 26px;
+    width: 19px;
+    border-radius: 3px;
+    background: #ffffff;
+    cursor: pointer;
+}
+
+/* All the same stuff for IE */
+input[type=range]::-ms-thumb {
+    box-shadow: 1px 1px 1px #000000, 0px 0px 1px #0d0d0d;
+    border: 1px solid #white;
+    height: 26px;
+    width: 19px;
+    border-radius: 3px;
+    background: #ffffff;
+    cursor: pointer;
+}
+center {
+    width: 420px;
+    max-width: 100%;
+    margin: 0px auto;
+    font-family: 'Roboto', sans-serif;
+    color: #444;
+}
+
+header {
+    background-color: #44878F;
+    color: white;
+    padding: 6px;
+    font-family: 'Roboto', sans-serif;
+    box-shadow: 1px 1px 5px #555555;
+    position: relative;
+}
+
+h1 {
+    margin: 0px;
+    font-family: 'Roboto', sans-serif;
+    font-size: 18pt;
+}
+
+center>div {
+    padding: 24px 5px 10px 5px;
+    box-shadow: 1px 1px 5px #555555;
+}
+
+table {
+    margin: 0px 12px 0px 12px;
+    border-collapse: collapse;
+}
+
+td {
+    color: #555;
+/*	border: 1px solid black; */
+/*    width: 100%; */
+}
+
+tr {
+ /*   width: 100%; */
+}
+
+.tabledressing {
+/*	border: 1px solid red; */
+	/* width: 720px; */
+    width: 100%;
+    max-width: 920px;
+	height: 45px;  
+	margin: 0 auto; 
+	margin-bottom: 7px;
+	font-family:Calibri;
+	table-layout: fixed;
+}
+
+.rounded {
+	border-radius: 5px;
+	background: #999;
+	padding: 5px; 
+	width: 30px;
+	height: 20px;  
+	line-height:20px;
+	display:inline-block; 	
+	vertical-align: middle; 
+	text-align:center;
+    box-shadow: 1px 1px 6px #555; 
+    margin:5px 5px 5px 5px;
+    font-size:14pt;
+    font-weight:bold;
+    color:white;
+}
+
+.rounded:hover {
+	box-shadow: 1px 1px 3px #444;;
+}
+
+.titleClass {
+    text-align:center; 
+    height: 30px; 
+    font-size:13pt; 
+    color: white;
+    font-family: Arial, Helvetica, sans-serif;
+    background-image: linear-gradient(to bottom, #B0B0B0 , #1F1F1F );   
+    white-space: nowrap;
+}
+
+.connStatus {
+	display:inline-block; 
+	margin-left:10px;
+	width: 150px;
+	max-width: 150px;
+}
+
+.valueLabel {
+	width: 150px; 
+	vertical-align: middle; 
+	text-align:left;	
+    color: white;
+    font-family: Arial, Helvetica, sans-serif;
+    padding-left: 10px;
+}
+
+.controlRow {
+	line-height:10px;
+	display: none;  
+	background-image: linear-gradient(to bottom, #B0B0B0 , #1F1F1F );
+}
+
+.sliderRow {
+/*	line-height:30px; */
+	height:38px;
+}
+
+.subProRow {
+	height: 30px;
+}
+
+.rowLabel {
+	font-size: 11pt;
+	text-align: right;
+    width: 150px; 
+    line-height: 10pt;
+    margin-top: auto;
+    margin-bottom: auto;
+    padding-right: 4px;
+    color: white;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+.newText {
+    color: white;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+.ckLabel {
+	display:inline-block;
+	font-size: 9pt;
+	width: 70px;
+	height:30px;
+	max-width: 70px;
+	text-align: right;
+	margin-right: 3pt;
+    vertical-align: middle;
+    padding-top: 10px;
+    color: white;
+    font-family: Arial, Helvetica, sans-serif;
+}
+.picker {
+	width: 40px;
+	max-width: 40px;
+}
+
+.colorLabel {
+	display:inline-block;
+	font-size: 9pt;
+	vertical-align: middle;
+	width: 40px;
+	max-width: 35px;
+	text-align: right;
+	margin-right: 3pt;
+    color: white;
+    font-family: Arial, Helvetica, sans-serif;
+	visibility:hidden;
+}
+
+.cContainer {
+	display:inline-block;
+}
+
+.button1, td.button1 {
+    text-decoration: none;
+    border: none;
+    color: white;
+    background-color: #1868bf;
+    padding: 6px 14px;
+    font-size: 12px;
+    cursor: pointer;
+    box-shadow: 1px 1px 6px #555; 
+    outline: none;
+    margin: 0px auto 0px 36px;
+    display: inline-block;
+}
+
+.button2, td.button2 {
+    text-decoration: none;
+    border: none;
+    color: black;
+    background-color: #18a3bf;
+    padding: 6px 14px;
+    font-size: 12px;
+    cursor: pointer;
+    box-shadow: 1px 1px 6px #555; 
+    outline: none;
+    margin: 0px 20px 0px auto;
+    display: inline-block;
+}
+
+.button1:hover:enabled, .button2:hover:enabled {
+	box-shadow: 1px 1px 3px #444;;
+}
+
+button1[disabled]:hover, button2[disabled]:hover {
+    box-shadow: 1px 1px 6px #555;
+	background-color:#166331;
+}
+
+/*customised range*/ 
+input[type=range].range
+{
+     cursor: pointer;
+     /* width: 440px !important; */
+     width: 100%;
+     /* max-width: 440px; */
+     -webkit-appearance: none;
+     z-index: 200;
+     border: none; /*1px solid #e6e636; */
+     background-color: #e5efff;
+     background-image: -webkit-gradient(linear, 0% 0%, 0% 100%, from(#e5efff), to(#c9ddfc));
+     background-image: -webkit-linear-gradient(right, #e5efff, #c9ddfc);
+     background-image: -moz-linear-gradient(right, #e5efff, #c9ddfc);
+     background-image: -ms-linear-gradient(right, #e5efff, #c9ddfc);
+     background-image: -o-linear-gradient(right, #e5efff, #c9ddfc);
+     vertical-align:middle;
+}
+.colorRow {
+	height:38px;
+}
+
+/*setting round corners to the range */ 
+input[type=range].round {
+     -webkit-border-radius: 10px; 
+     -moz-border-radius: 10px; 
+     border-radius: 10px; 
+}
+some-class {
+  clear: none;
+}
+
+label {
+  clear: none;
+  padding: 2px 1em 0 0;
+}
+
+input[type=radio],
+input.radio {
+  clear: none;
+  margin: 2px 0 0 2px;
+}
+
+/* Track styles from https://css-tricks.com/styling-cross-browser-compatible-range-inputs-css/ */
+input[type=range]::-webkit-slider-runnable-track {
+  width: 100%;
+  height: 8.4px;
+  cursor: pointer;
+  box-shadow: 1px 1px 1px #000000, 0px 0px 1px #0d0d0d;
+  background: #3071a9;
+  border-radius: 1.3px;
+  border: 0.2px solid #010101;
+}
+
+input[type=range]:focus::-webkit-slider-runnable-track {
+  background: #367ebd;
+}
+
+input[type=range]::-moz-range-track {
+  width: 100%;
+  height: 8.4px;
+  cursor: pointer;
+  box-shadow: 1px 1px 1px #000000, 0px 0px 1px #0d0d0d;
+  background: #3071a9;
+  border-radius: 1.3px;
+  border: 0.2px solid #010101;
+}
+
+input[type=range]::-ms-track {
+  width: 100%;
+  height: 8.4px;
+  cursor: pointer;
+  background: transparent;
+  border-color: transparent;
+  border-width: 16px 0;
+  color: transparent;
+}
+input[type=range]::-ms-fill-lower {
+  background: #2a6495;
+  border: 0.2px solid #010101;
+  border-radius: 2.6px;
+  box-shadow: 1px 1px 1px #000000, 0px 0px 1px #0d0d0d;
+}
+input[type=range]:focus::-ms-fill-lower {
+  background: #3071a9;
+}
+input[type=range]::-ms-fill-upper {
+  background: #3071a9;
+  border: 0.2px solid #010101;
+  border-radius: 2.6px;
+  box-shadow: 1px 1px 1px #000000, 0px 0px 1px #0d0d0d;
+}
+input[type=range]:focus::-ms-fill-upper {
+  background: #367ebd;
+}
